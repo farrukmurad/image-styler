@@ -3,26 +3,25 @@ const OPENAI_KEY = "sk-svcacct-Yjg9cJJfOnO130sMTz66HCg8fp-9CMOfSXD-5hgmVMoHCm33z
 const STYLE_BG_URL = 
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
-// ———— DOM ELEMENTS ————
+// ——— DOM ELEMENTS ———
 const fileInput    = document.getElementById("fileInput");
 const imgToCrop    = document.getElementById("toCrop");
 const cropBtn      = document.getElementById("cropBtn");
 const resultCanvas = document.getElementById("resultCanvas");
 const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
-let cropper;
 
-// 1) When user selects a photo:
+let cropper; // will hold our Cropper.js instance
+
+// 1) When a user uploads a file, show it in Cropper.js
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
   if (!file) return;
 
-  // Show image and Crop button
   imgToCrop.src = URL.createObjectURL(file);
   imgToCrop.style.display = "block";
   cropBtn.style.display = "inline-block";
 
-  // Initialize or re‑initialize Cropper.js
   if (cropper) cropper.destroy();
   cropper = new Cropper(imgToCrop, {
     viewMode: 1,
@@ -31,51 +30,53 @@ fileInput.addEventListener("change", () => {
   });
 });
 
-// 2) When user clicks “Crop & Style”:
+// 2) When they click "Crop & Style", we:
+//    • grab the cropped image
+//    • build a real PNG mask
+//    • send both + prompt to OpenAI
+//    • composite AI result over our background
+//    • show download link & add thumbnail to gallery
 cropBtn.addEventListener("click", async () => {
-  // a) Get the cropped face+bust as 512×512 PNG
   const canvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
-canvas.toBlob(async blob => {
-  // 1) Start your FormData and add the cropped image
-  const form = new FormData();
-  form.append("image", blob, "face.png");
 
-  // 2) Create a real PNG mask via a hidden canvas
-  const maskCanvas = document.createElement("canvas");
-  maskCanvas.width  = canvas.width;
-  maskCanvas.height = canvas.height;
-  const mctx = maskCanvas.getContext("2d");
-  mctx.fillStyle = "white";                  // white = areas to edit
-  mctx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
-  const maskBlob = await new Promise(res =>
-    maskCanvas.toBlob(res, "image/png")      // convert to PNG blob
-  );
-  form.append("mask", maskBlob, "mask.png"); // attach as “mask.png”
+  canvas.toBlob(async (blob) => {
+    // a) build form with user image
+    const form = new FormData();
+    form.append("image", blob, "face.png");
 
-  // 3) Now append the rest and call OpenAI as before
-  form.append("model", "dall-e-3");
-  form.append("prompt",
-    `Please restyle this photo to match exactly the look of this background image: ${STYLE_BG_URL}`
-  );
+    // b) build a real PNG mask via an offscreen canvas
+    const maskCanvas = document.createElement("canvas");
+    maskCanvas.width  = canvas.width;
+    maskCanvas.height = canvas.height;
+    const mctx = maskCanvas.getContext("2d");
+    mctx.fillStyle = "white";
+    mctx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+    const maskBlob = await new Promise(res =>
+      maskCanvas.toBlob(res, "image/png")
+    );
+    form.append("mask", maskBlob, "mask.png");
 
-  const resp = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-    body: form
-  });
-  // … handle resp.json() and draw the result …
-});
+    // c) add prompt with your style‑ref URL
+    form.append("prompt",
+      `Please repaint this photo to match exactly the style of this reference image: ${STYLE_BG_URL}`
+    );
+    // (optional) specify model or let it default
+    form.append("model", "dall-e-2");  
 
-    // c) Call OpenAI images.edit endpoint
+    // d) call OpenAI
     const resp = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
       body: form
     });
     const j = await resp.json();
-    const aiUrl = j.data[0].url;
+    if (!resp.ok) {
+      console.error("OpenAI error:", j);
+      return alert("Styling failed: " + (j.error?.message || resp.statusText));
+    }
 
-    // d) Load AI result and composite over your style background
+    // e) composite AI result over your background
+    const aiUrl = j.data[0].url;
     const ctx = resultCanvas.getContext("2d");
     const aiImg = new Image();
     aiImg.crossOrigin = "anonymous";
@@ -85,19 +86,21 @@ canvas.toBlob(async blob => {
       bg.crossOrigin = "anonymous";
       bg.src = STYLE_BG_URL;
       bg.onload = () => {
-        // Resize canvas to background size
-        resultCanvas.width = bg.width;
+        resultCanvas.width  = bg.width;
         resultCanvas.height = bg.height;
-        // Draw background
         ctx.drawImage(bg, 0, 0, bg.width, bg.height);
-        // Center AI image on top
-        const x = (bg.width - aiImg.width) / 2;
+
+        // center AI image
+        const x = (bg.width  - aiImg.width)  / 2;
         const y = (bg.height - aiImg.height) / 2;
         ctx.drawImage(aiImg, x, y);
-        // Show and hook up download/gallery
+
+        // show download link
         resultCanvas.style.display = "block";
         downloadBtn.style.display = "inline-block";
         downloadBtn.href = resultCanvas.toDataURL("image/png");
+
+        // add thumbnail to gallery
         const thumb = document.createElement("img");
         thumb.src = resultCanvas.toDataURL("image/png");
         gallery.prepend(thumb);
@@ -105,3 +108,4 @@ canvas.toBlob(async blob => {
     };
   }, "image/png");
 });
+

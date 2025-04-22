@@ -58,12 +58,19 @@ fileInput.addEventListener("change", async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageBase64: base64 })
     });
-    data = await resp.json();
+    const text = await resp.text();
+    data = text ? JSON.parse(text) : {};
     if (!resp.ok) throw data;
   } catch (err) {
     console.error("Proxy error:", err);
-    return alert("Styling failed:\n" + (err.error || err));
-  }
+    // Show the entire error object as JSON,
+    // or at least the `error` property if present.
+    const msg = err.error
+      ? (typeof err.error === "string"
+         ? err.error
+         : JSON.stringify(err.error, null, 2))
+      : JSON.stringify(err, null, 2);
+    return alert("Styling failed:\n" + msg);
 
   // 2) Composite over your background
   const aiUrl = data.url;

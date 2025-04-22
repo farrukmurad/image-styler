@@ -1,82 +1,90 @@
-// ← Paste your actual API key between the quotes:
-const OPENAI_KEY = "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";
+// ———— CONFIG ————
+const OPENAI_KEY = "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";  
+const STYLE_BG_URL = 
+  "https://<YOUR‑USERNAME>.github.io/image-styler/style-ref.png";
 
-// Grab the buttons and containers by their “id”
+// ———— DOM ELEMENTS ————
 const fileInput    = document.getElementById("fileInput");
 const imgToCrop    = document.getElementById("toCrop");
 const cropBtn      = document.getElementById("cropBtn");
 const resultCanvas = document.getElementById("resultCanvas");
 const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
+let cropper;
 
-let cropper; // we’ll store the cropper instance here
-
-// 1) After you pick a file:
+// 1) When user selects a photo:
 fileInput.addEventListener("change", () => {
   const file = fileInput.files[0];
-  if (!file) return; // nothing selected
+  if (!file) return;
 
-  // Show the image and “Crop & Style” button
+  // Show image and Crop button
   imgToCrop.src = URL.createObjectURL(file);
   imgToCrop.style.display = "block";
   cropBtn.style.display = "inline-block";
 
-  // If we had an old cropper, destroy it
+  // Initialize or re‑initialize Cropper.js
   if (cropper) cropper.destroy();
-
-  // Start a new Cropper.js on that image
   cropper = new Cropper(imgToCrop, {
     viewMode: 1,
-    aspectRatio: 1,      // square crop (head+bust)
+    aspectRatio: 1,
     autoCropArea: 0.8
   });
 });
 
-// 2) When you click “Crop & Style”:
+// 2) When user clicks “Crop & Style”:
 cropBtn.addEventListener("click", async () => {
-  // a) Turn the cropped area into a 512×512 image
+  // a) Get the cropped face+bust as 512×512 PNG
   const canvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
   canvas.toBlob(async blob => {
-    // b) Prepare form data for OpenAI: original crop + blank mask
+    // b) Prepare our form data
     const form = new FormData();
     form.append("image", blob, "face.png");
-
-    // Blank mask of same size (so we style the whole crop)
+    // Blank mask = style whole crop
     const maskData = new Uint8Array(canvas.width * canvas.height).fill(255);
     const maskBlob = new Blob([maskData], { type: "application/octet-stream" });
     form.append("mask", maskBlob, "mask.png");
-
     form.append("model", "dall-e-3");
+    // Prompt with your background style image URL
     form.append("prompt",
-      "Recreate this portrait in an electric‑cyan, high‑contrast 3D bust style."
+      `Please restyle this photo to match exactly the look of this background image: ${STYLE_BG_URL}`
     );
 
-    // c) Call the OpenAI API
-    const response = await fetch("https://api.openai.com/v1/images/edits", {
+    // c) Call OpenAI images.edit endpoint
+    const resp = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
       body: form
     });
-    const data = await response.json();
-    const styledUrl = data.data[0].url; // The URL of your new cyan‑bust
+    const j = await resp.json();
+    const aiUrl = j.data[0].url;
 
-    // d) Draw that new image on our canvas
+    // d) Load AI result and composite over your style background
     const ctx = resultCanvas.getContext("2d");
-    const styledImg = new Image();
-    styledImg.crossOrigin = "anonymous";
-    styledImg.src = styledUrl;
-    styledImg.onload = () => {
-      resultCanvas.width = styledImg.width;
-      resultCanvas.height = styledImg.height;
-      ctx.drawImage(styledImg, 0, 0);
-      resultCanvas.style.display = "block";
-      downloadBtn.style.display = "inline-block";
-      downloadBtn.href = resultCanvas.toDataURL("image/png");
-
-      // e) Add it as a small thumbnail in the gallery
-      const thumb = document.createElement("img");
-      thumb.src = resultCanvas.toDataURL("image/png");
-      gallery.prepend(thumb);
+    const aiImg = new Image();
+    aiImg.crossOrigin = "anonymous";
+    aiImg.src = aiUrl;
+    aiImg.onload = () => {
+      const bg = new Image();
+      bg.crossOrigin = "anonymous";
+      bg.src = STYLE_BG_URL;
+      bg.onload = () => {
+        // Resize canvas to background size
+        resultCanvas.width = bg.width;
+        resultCanvas.height = bg.height;
+        // Draw background
+        ctx.drawImage(bg, 0, 0, bg.width, bg.height);
+        // Center AI image on top
+        const x = (bg.width - aiImg.width) / 2;
+        const y = (bg.height - aiImg.height) / 2;
+        ctx.drawImage(aiImg, x, y);
+        // Show and hook up download/gallery
+        resultCanvas.style.display = "block";
+        downloadBtn.style.display = "inline-block";
+        downloadBtn.href = resultCanvas.toDataURL("image/png");
+        const thumb = document.createElement("img");
+        thumb.src = resultCanvas.toDataURL("image/png");
+        gallery.prepend(thumb);
+      };
     };
   }, "image/png");
 });

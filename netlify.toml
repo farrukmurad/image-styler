@@ -1,8 +1,10 @@
 [build]
-  publish = "."        # no static build folder
-  functions = "functions"  # point to your existing functions/ dir
+  publish   = "."            # serve from the repo root
+  functions = "functions"    # look here for lambdas
 
+# (optional) client‑side SPA redirect
 [[redirects]]
-  from = "/*"
-  to   = "/index.html"
+  from   = "/*"
+  to     = "/index.html"
   status = 200
+

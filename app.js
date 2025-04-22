@@ -12,8 +12,7 @@ const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// ——— HELPERS ———
-// Convert any selected file (JPEG/PNG) into a valid PNG blob:
+// ——— HELPER: convert ANY image file to a true PNG blob ———
 function fileToPngBlob(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -36,7 +35,7 @@ fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
   if (!file) return alert("Please select a photo");
 
-  // 1) Ensure it's a PNG for both image + mask:
+  // 1) Convert the uploaded file to PNG (so mask/png requirements are met)
   let pngBlob;
   try {
     pngBlob = await fileToPngBlob(file);
@@ -44,10 +43,10 @@ fileInput.addEventListener("change", async () => {
     return alert("Failed to process image: " + e);
   }
 
-  // 2) Build the multipart form for OpenAI
+  // 2) Build multipart form
   const form = new FormData();
   form.append("image", pngBlob, "user.png");
-  form.append("mask",  pngBlob, "mask.png");  
+  form.append("mask",  pngBlob, "mask.png");       // full‑photo repaint
   form.append(
     "prompt",
     `Please repaint this photo to match exactly the style of this reference image: ${STYLE_BG_URL}`
@@ -55,11 +54,11 @@ fileInput.addEventListener("change", async () => {
   form.append("n",    "1");
   form.append("size", "512x512");
 
-  // 3) POST to the edits endpoint
+  // 3) Send to OpenAI — **must** be POST or you’ll get that GET error
   let resp, json;
   try {
     resp = await fetch("https://api.openai.com/v1/images/edits", {
-      method: "POST",                             // <— must be POST
+      method: "POST",                         // ← crucial!
       headers: { Authorization: `Bearer ${OPENAI_KEY}` },
       body: form
     });
@@ -72,7 +71,7 @@ fileInput.addEventListener("change", async () => {
     return alert("AI styling failed: " + msg);
   }
 
-  // 4) Composite the AI result over your style-ref background
+  // 4) Composite the AI result over your style‑ref background
   const aiUrl = json.data[0].url;
   const aiImg = new Image();
   aiImg.crossOrigin = "anonymous";
@@ -82,22 +81,23 @@ fileInput.addEventListener("change", async () => {
     bg.crossOrigin = "anonymous";
     bg.src = STYLE_BG_URL;
     bg.onload = () => {
-      // a) Resize canvas
+      // a) Resize canvas to the background size
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
-      // b) Center the AI image
+      // b) Center the AI image on top
       const x = (bg.width  - aiImg.width)  / 2;
       const y = (bg.height - aiImg.height) / 2;
       ctx.drawImage(aiImg, x, y);
-      // c) Show download link
+      // c) Show the download link
       resultCanvas.style.display = "block";
       downloadBtn.style.display  = "inline-block";
       downloadBtn.href = resultCanvas.toDataURL("image/png");
-      // d) Add thumbnail to gallery
+      // d) Add a thumbnail to the gallery
       const thumb = document.createElement("img");
       thumb.src = resultCanvas.toDataURL("image/png");
       gallery.prepend(thumb);
     };
   };
 });
+

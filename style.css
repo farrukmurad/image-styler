@@ -1,5 +1,8 @@
-body { font-family: sans-serif; text-align: center; padding: 2rem; }
-#previewImg, #resultCanvas { max-width: 100%; }
-#previewImg { border: 2px dashed #00ffff; }
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 2rem;
+}
+#previewImg { border: 2px dashed #0ff; border-radius:4px; }
 #gallery { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; margin-top:1rem; }
-#gallery img { width:100px; border:2px solid #00ffff; border-radius:4px; }
+#gallery img { width:100px; border:2px solid #0ff; border-radius:4px; }

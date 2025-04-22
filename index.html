@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Campaign Style Transfer</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8"/>
+  <title>Style‑Transfer Demo</title>
+  <link rel="stylesheet" href="style.css"/>
 </head>
 <body>
-  <h1>Upload & Get Styled Bust</h1>
-  <input type="file" id="fileInput" accept="image/*" />
-  <img id="previewImg" alt="Preview" style="display:none; margin:1rem auto; max-width:300px;"/>
+  <h1>Upload & Style‑Transfer</h1>
+  <input type="file" id="fileInput" accept="image/*"/>
+  <img    id="previewImg" style="display:none; margin:1rem auto; max-width:300px; border:2px dashed #0ff;"/>
   <canvas id="resultCanvas" style="display:none; border:2px solid #0ff; margin:1rem auto;"></canvas>
-  <br />
+  <br/>
   <a id="downloadBtn" style="display:none;" download="styled.png">Download & Share</a>
   <h2>Gallery</h2>
   <div id="gallery"></div>

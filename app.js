@@ -7,7 +7,7 @@ const gallery      = document.getElementById('gallery');
 const ctx          = resultCanvas.getContext('2d');
 
 const API_URL = '/.netlify/functions/style';
-const STYLE_BG = 'https://<YOUR-USERNAME>.github.io/image-styler/style-ref.png';
+const STYLE_BG = 'https://farrukmurad.github.io/image-styler/style-ref.png';
 
 // Convert file → base64 PNG
 function fileToBase64(file) {

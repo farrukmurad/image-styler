@@ -3,19 +3,19 @@ body {
   text-align: center;
   padding: 2rem;
 }
-#cropContainer {
-  margin-top: 1rem;
+#resultCanvas {
+  max-width: 100%;
+  border: 2px solid #00ffff;
 }
 #gallery {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
   justify-content: center;
-  margin-top: 2rem;
+  margin-top: 1rem;
 }
 #gallery img {
   width: 100px;
   border: 2px solid #00ffff;
-  border-radius: 8px;
+  border-radius: 4px;
 }
-

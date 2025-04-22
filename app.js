@@ -1,87 +1,85 @@
-// ——— CONFIG ———
-const FUNCTION_URL = "/.netlify/functions/style";  
-const STYLE_BG_URL  = "https://farrukmurad.github.io/image-styler/style-ref.png";
 
+// ——— CONFIG: paste your real key here (demo only!) ———
+const OPENAI_KEY   = "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";
+const STYLE_REF_URL = "https://farrukmurad.github.io/image-styler/style-ref.png";
 
-// ——— DOM ———
+// DOM refs
 const fileInput    = document.getElementById("fileInput");
 const resultCanvas = document.getElementById("resultCanvas");
 const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// Convert File → Base64 PNG
-function fileToBase64Png(file) {
+// Convert File → PNG Blob (512×512)
+async function fileToPngBlob(file) {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        const cvs = document.createElement("canvas");
-        cvs.width = img.width;
-        cvs.height = img.height;
-        cvs.getContext("2d").drawImage(img, 0, 0);
-        cvs.toBlob(blob => {
-          const r = new FileReader();
-          r.onload = () => resolve(r.result.split(",")[1]);
-          r.readAsDataURL(blob);
-        }, "image/png");
-      };
-      img.onerror = () => reject("Image load failed");
-      img.src = reader.result;
+    const img = new Image();
+    img.onload = () => {
+      const cvs = document.createElement("canvas");
+      cvs.width = 512;
+      cvs.height = 512;
+      const c = cvs.getContext("2d");
+      c.drawImage(img, 0, 0, 512, 512);
+      cvs.toBlob(b => resolve(b), "image/png");
     };
-    reader.onerror = () => reject("File read failed");
-    reader.readAsDataURL(file);
+    img.onerror = () => reject("Image load failed");
+    img.src = URL.createObjectURL(file);
   });
 }
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
-  if (!file) return alert("Please select a photo");
+  if (!file) return alert("Select a photo first!");
 
-  let base64;
+  let blob;
   try {
-    base64 = await fileToBase64Png(file);
+    blob = await fileToPngBlob(file);
   } catch (e) {
-    return alert("Conversion failed: " + e);
+    return alert("Failed to process image: " + e);
   }
 
-  // 1) Call your function
-  let resp, text, data;
+  // Build FormData
+  const form = new FormData();
+  form.append("image", blob, "user.png");
+  form.append("mask",  blob, "mask.png");
+  form.append("prompt",
+    `Please repaint this image to match exactly the style of this reference: ${STYLE_REF_URL}`
+  );
+  form.append("n",    "1");
+  form.append("size", "512x512");
+
+  // Call OpenAI directly
+  let res, json;
   try {
-    resp = await fetch(FUNCTION_URL, {
+    res = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageBase64: base64 })
+      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
+      body: form
     });
-    text = await resp.text();
-    data = text ? JSON.parse(text) : null;
+    json = await res.json();
+    if (!res.ok) throw json;
   } catch (err) {
-    console.error("Network or JSON error:", err, text);
-    return alert("Server error:\n" + (text || err));
+    console.error(err);
+    return alert("API error:\n" + (err.error?.message || JSON.stringify(err)));
   }
 
-  if (!resp.ok) {
-    console.error("Function returned error:", data);
-    return alert("Styling failed:\n" + (data?.error || `Status ${resp.status}`));
-  }
-
-  // 2) Composite result
-  const aiUrl = data.url;
+  // Draw result over style-ref.png background
+  const aiUrl = json.data[0].url;
   const aiImg = new Image();
   aiImg.crossOrigin = "anonymous";
   aiImg.src = aiUrl;
   aiImg.onload = () => {
     const bg = new Image();
     bg.crossOrigin = "anonymous";
-    bg.src = STYLE_BG_URL;
+    bg.src = STYLE_REF_URL;
     bg.onload = () => {
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
-      const x = (bg.width - aiImg.width) / 2;
-      const y = (bg.height - aiImg.height) / 2;
-      ctx.drawImage(aiImg, x, y);
+      // Center AI result
+      const x = (bg.width - 512) / 2;
+      const y = (bg.height - 512) / 2;
+      ctx.drawImage(aiImg, x, y, 512, 512);
 
       resultCanvas.style.display = "block";
       downloadBtn.style.display  = "inline-block";

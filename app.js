@@ -7,7 +7,6 @@ const PROXY_URL = "https://image-styler-proxy.murodovfarrukh.workers.dev/";
 const STYLE_REF_URL =
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
-
 // DOM refs
 const fileInput    = document.getElementById("fileInput");
 const resultCanvas = document.getElementById("resultCanvas");
@@ -70,7 +69,7 @@ fileInput.addEventListener("change", async () => {
          : JSON.stringify(err.error, null, 2))
       : JSON.stringify(err, null, 2);
     return alert("Styling failed:\n" + msg);
-  }  // ← **This closes the catch block**!
+  }
 
   // 2) Composite over your background
   const aiUrl = data.url;
@@ -82,21 +81,26 @@ fileInput.addEventListener("change", async () => {
     bg.crossOrigin = "anonymous";
     bg.src = STYLE_REF_URL;
     bg.onload = () => {
+      // resize to background
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
 
+      // center AI image
       const x = (bg.width - 512) / 2;
       const y = (bg.height - 512) / 2;
       ctx.drawImage(aiImg, x, y, 512, 512);
 
+      // show download link
       resultCanvas.style.display = "block";
       downloadBtn.style.display  = "inline-block";
       downloadBtn.href           = resultCanvas.toDataURL("image/png");
 
+      // add to gallery
       const thumb = document.createElement("img");
       thumb.src = resultCanvas.toDataURL("image/png");
       gallery.prepend(thumb);
     };
   };
 });
+

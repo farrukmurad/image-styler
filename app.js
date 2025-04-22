@@ -1,6 +1,6 @@
 
 // ——— CONFIG: paste your real key here (demo only!) ———
-const OPENAI_KEY   = "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";
+const OPENAI_KEY   = "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";
 const STYLE_REF_URL = "https://farrukmurad.github.io/image-styler/style-ref.png";
 
 // DOM refs

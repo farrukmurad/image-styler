@@ -1,7 +1,7 @@
 // ———— CONFIG ————
 const OPENAI_KEY = "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";  
 const STYLE_BG_URL = 
-  "https://<YOUR‑USERNAME>.github.io/image-styler/style-ref.png";
+  "https://farrukmurad.github.io/image-styler/style-ref.png";
 
 // ———— DOM ELEMENTS ————
 const fileInput    = document.getElementById("fileInput");

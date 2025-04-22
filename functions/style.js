@@ -2,7 +2,6 @@
 import OpenAI from "openai";
 
 export const handler = async (event) => {
-  // Only accept POST
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -12,6 +11,8 @@ export const handler = async (event) => {
   }
 
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+  // Parse the incoming JSON
   let payload;
   try {
     payload = JSON.parse(event.body);
@@ -23,20 +24,24 @@ export const handler = async (event) => {
     };
   }
 
-  const imgBuffer = Buffer.from(payload.imageBase64, "base64");
+  const imageBuffer = Buffer.from(payload.imageBase64, "base64");
+
   try {
-    const response = await openai.images.edits.create({
-      image: imgBuffer,
-      mask:  imgBuffer,
-      prompt: `Please repaint this photo to match exactly the style of this reference image: https://<YOUR-USERNAME>.github.io/image-styler/style-ref.png`,
+    // ← Use openai.images.edit, not images.edits.create
+    const response = await openai.images.edit({
+      image: imageBuffer,
+      mask:  imageBuffer,  
+      prompt: `Please repaint this photo to match exactly the style of this reference image: https://<YOUR‑USERNAME>.github.io/image-styler/style-ref.png`,
       n: 1,
       size: "512x512",
     });
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: response.data[0].url })
     };
+
   } catch (err) {
     console.error("OpenAI error:", err);
     return {

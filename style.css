@@ -1,30 +1,5 @@
-body {
-  font-family: sans-serif;
-  text-align: center;
-  padding: 2rem;
-}
-#resultCanvas {
-  max-width: 100%;
-  border: 2px solid #00ffff;
-}
-#gallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 1rem;
-}
-#gallery img {
-  width: 100px;
-  border: 2px solid #00ffff;
-  border-radius: 4px;
-}
-
-#previewImg {
-  display: block;
-  margin: 1rem auto;
-  max-width: 300px;
-  border: 2px dashed #00ffff;
-  border-radius: 4px;
-}
-
+body { font-family: sans-serif; text-align: center; padding: 2rem; }
+#previewImg, #resultCanvas { max-width: 100%; }
+#previewImg { border: 2px dashed #00ffff; border-radius:4px; }
+#gallery { display:flex; flex-wrap:wrap; gap:1rem; justify-content:center; margin-top:1rem; }
+#gallery img { width:100px; border:2px solid #00ffff; border-radius:4px; }

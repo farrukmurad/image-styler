@@ -2,6 +2,7 @@
 const FUNCTION_URL = "/.netlify/functions/style";  
 const STYLE_BG_URL  = "https://farrukmurad.github.io/image-styler/style-ref.png";
 
+
 // ——— DOM ———
 const fileInput    = document.getElementById("fileInput");
 const resultCanvas = document.getElementById("resultCanvas");
@@ -9,7 +10,7 @@ const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// Convert selected file → base64‑encoded PNG
+// Convert File → Base64 PNG
 function fileToBase64Png(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -17,7 +18,7 @@ function fileToBase64Png(file) {
       const img = new Image();
       img.onload = () => {
         const cvs = document.createElement("canvas");
-        cvs.width  = img.width;
+        cvs.width = img.width;
         cvs.height = img.height;
         cvs.getContext("2d").drawImage(img, 0, 0);
         cvs.toBlob(blob => {
@@ -45,19 +46,24 @@ fileInput.addEventListener("change", async () => {
     return alert("Conversion failed: " + e);
   }
 
-  // 1) Send to Netlify Function
-  let resp, data;
+  // 1) Call your function
+  let resp, text, data;
   try {
     resp = await fetch(FUNCTION_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageBase64: base64 })
     });
-    data = await resp.json();
-    if (!resp.ok) throw data;
+    text = await resp.text();
+    data = text ? JSON.parse(text) : null;
   } catch (err) {
-    console.error("Function error:", err);
-    return alert("Styling failed:\n" + (err.error || err));
+    console.error("Network or JSON error:", err, text);
+    return alert("Server error:\n" + (text || err));
+  }
+
+  if (!resp.ok) {
+    console.error("Function returned error:", data);
+    return alert("Styling failed:\n" + (data?.error || `Status ${resp.status}`));
   }
 
   // 2) Composite result
@@ -87,3 +93,4 @@ fileInput.addEventListener("change", async () => {
     };
   };
 });
+

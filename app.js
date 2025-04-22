@@ -1,99 +1,78 @@
 
 
+
 // ——— CONFIG ———
-// 1) Your Worker URL from Cloudflare:
+// Your Cloudflare Worker proxy URL (no key here!)
 const PROXY_URL = "https://image-styler-proxy.murodovfarrukh.workers.dev/";
-// 2) Your public style-ref.png:
+// Your style-reference background
 const STYLE_REF_URL =
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
-
-// DOM elements
+// DOM refs
 const fileInput    = document.getElementById("fileInput");
+const previewImg   = document.getElementById("previewImg");
 const resultCanvas = document.getElementById("resultCanvas");
 const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// ——— Helper (resizes & converts to PNG blob) ———
-async function fileToPngBlob(file) {
+// helper: file → base64‐PNG
+function fileToBase64Png(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      const cvs = document.createElement("canvas");
-      cvs.width  = 512;
-      cvs.height = 512;
-      cvs.getContext("2d").drawImage(img, 0, 0, 512, 512);
-      cvs.toBlob(blob => resolve(blob), "image/png");
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.onload = () => {
+        const cvs = document.createElement("canvas");
+        cvs.width = 512; cvs.height = 512;
+        cvs.getContext("2d").drawImage(img, 0, 0, 512, 512);
+        cvs.toBlob(b => {
+          const r = new FileReader();
+          r.onload = () => resolve(r.result.split(",")[1]);
+          r.readAsDataURL(b);
+        }, "image/png");
+      };
+      img.onerror = () => reject("Image load failed");
+      img.src = reader.result;
     };
-    img.onerror = () => reject("Image load failed");
-    img.src = URL.createObjectURL(file);
+    reader.onerror = () => reject("File read failed");
+    reader.readAsDataURL(file);
   });
 }
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
-  if (!file) return alert("Please select a photo");
+  if (!file) return alert("Select a photo");
 
-  // 1) Convert to 512×512 PNG
-  let pngBlob;
+  // 1) Preview & convert to base64
+  let b64;
   try {
-    pngBlob = await fileToPngBlob(file);
+    b64 = await fileToBase64Png(file);
+    previewImg.src = "data:image/png;base64," + b64;
+    previewImg.style.display = "block";
   } catch (e) {
-    return alert("Conversion failed: " + e);
+    return alert("Preview failed: " + e);
   }
 
-  // (Optional) preview what you're sending:
-  const preview = document.getElementById("previewImg");
-  if (preview) {
-    preview.src = URL.createObjectURL(pngBlob);
-    preview.style.display = "block";
-  }
-
-  // 2) Build a fully‑transparent mask
-  const maskBlob = await new Promise(res => {
-    const empty = document.createElement("canvas");
-    empty.width  = 512;
-    empty.height = 512;
-    empty.toBlob(res, "image/png");  // transparent by default
-  });
-
-  // 3) Prepare multipart form
-  const form = new FormData();
-  form.append("image", pngBlob, "user.png");
-  form.append("mask",  maskBlob, "mask.png");
-  form.append(
-    "prompt",
-    `Please repaint this photo to match exactly the style of this reference image: ${STYLE_REF_URL}`
-  );
-  form.append("n",    "1");
-  form.append("size", "512x512");
-
-  // 4) Call the API
-  let resp, json;
+  // 2) send to your Worker
+  let resp, data;
   try {
-    resp = await fetch("https://api.openai.com/v1/images/edits", {
+    resp = await fetch(PROXY_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${OPENAI_KEY}` },
-      body: form
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64: b64 })
     });
-    json = await resp.json();
-    if (!resp.ok) throw json;
+    data = await resp.json();
+    if (!resp.ok) throw data;
   } catch (err) {
-    console.error("OpenAI error:", err);
-    // Display whichever message is present:
-    const msg = err.error?.message       // nested error object?
-               ?? err.message           // top‐level message?
-               ?? JSON.stringify(err);  // fall back to full JSON
-    return alert("Styling failed:\n" + msg);
+    console.error("Worker error:", err);
+    return alert("Styling failed:\n" + (err.error || err.message || JSON.stringify(err)));
   }
 
-  // 5) Hide preview
-  if (preview) preview.style.display = "none";
+  // 3) hide preview, show AI result
+  previewImg.style.display = "none";
 
-  // 6) Composite over your background
-  const aiUrl = json.data[0].url;
+  const aiUrl = data.data?.[0]?.url || data.url;
   const aiImg = new Image();
   aiImg.crossOrigin = "anonymous";
   aiImg.src = aiUrl;
@@ -102,27 +81,18 @@ fileInput.addEventListener("change", async () => {
     bg.crossOrigin = "anonymous";
     bg.src = STYLE_REF_URL;
     bg.onload = () => {
-      // a) fit canvas to background
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
-
-      // b) center the AI image
-      const x = (bg.width  - 512) / 2;
+      const x = (bg.width - 512) / 2;
       const y = (bg.height - 512) / 2;
       ctx.drawImage(aiImg, x, y, 512, 512);
-
-      // c) show download link
       resultCanvas.style.display = "block";
       downloadBtn.style.display  = "inline-block";
       downloadBtn.href           = resultCanvas.toDataURL("image/png");
-
-      // d) add to gallery
       const thumb = document.createElement("img");
       thumb.src = resultCanvas.toDataURL("image/png");
       gallery.prepend(thumb);
     };
   };
 });
-
-

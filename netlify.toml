@@ -1,0 +1,8 @@
+[build]
+  publish = "."        # no static build folder
+  functions = "functions"  # point to your existing functions/ dir
+
+[[redirects]]
+  from = "/*"
+  to   = "/index.html"
+  status = 200

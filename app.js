@@ -9,7 +9,6 @@ const STYLE_REF_URL =
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
 
-// DOM refs
 const fileInput    = document.getElementById("fileInput");
 const previewImg   = document.getElementById("previewImg");
 const resultCanvas = document.getElementById("resultCanvas");
@@ -17,91 +16,82 @@ const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// helper to convert a File → base64‑PNG string
+// convert file → base64‑PNG
 function fileToBase64Png(file) {
-  return new Promise((resolve, reject) => {
-    const img    = new Image();
+  return new Promise((res, rej) => {
     const reader = new FileReader();
     reader.onload = () => {
+      const img = new Image();
       img.onload = () => {
         const cvs = document.createElement("canvas");
         cvs.width  = 512;
         cvs.height = 512;
-        cvs.getContext("2d").drawImage(img, 0, 0, 512, 512);
-        cvs.toBlob(blob => {
+        cvs.getContext("2d").drawImage(img,0,0,512,512);
+        cvs.toBlob(b => {
           const r = new FileReader();
-          r.onload = () => resolve(r.result.split(",")[1]);
-          r.readAsDataURL(blob);
+          r.onload = () => res(r.result.split(",")[1]);
+          r.readAsDataURL(b);
         }, "image/png");
       };
-      img.onerror = () => reject("Image load failed");
-      img.src     = reader.result;
+      img.onerror = ()=> rej("Image load failed");
+      img.src = reader.result;
     };
-    reader.onerror = () => reject("File read failed");
+    reader.onerror = ()=> rej("File read failed");
     reader.readAsDataURL(file);
   });
 }
 
 fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
-  if (!file) return alert("Please select a photo");
-
-  // 1) Convert & preview
+  if (!file) return alert("Select a photo");
   let b64;
   try {
     b64 = await fileToBase64Png(file);
-    previewImg.src           = "data:image/png;base64," + b64;
+    previewImg.src = "data:image/png;base64," + b64;
     previewImg.style.display = "block";
   } catch (e) {
     return alert("Preview failed: " + e);
   }
 
-  // 2) Send to Worker
   let resp, data;
   try {
     resp = await fetch(PROXY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method:"POST",
+      headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ imageBase64: b64 })
     });
     data = await resp.json();
     if (!resp.ok) throw data;
-  } catch (err) {
+  } catch(err) {
     console.error("Worker error:", err);
-    // Safely extract the message:
-    const payload = err.error || err; 
-    const msg = typeof payload === "string"
-      ? payload
-      : payload.message || JSON.stringify(payload, null, 2);
+    const msg = err.error?.message || JSON.stringify(err);
     return alert("Styling failed:\n" + msg);
   }
 
-  // 3) Hide preview & show AI result
   previewImg.style.display = "none";
-  const aiUrl  = data.data?.[0]?.url || data.url;
-  const aiImg  = new Image();
+
+  // Replicate returns a `urls.output[0]`
+  const aiUrl = data.urls?.output?.[0];
+  if (!aiUrl) {
+    return alert("No output URL in response");
+  }
+
+  const aiImg = new Image();
   aiImg.crossOrigin = "anonymous";
-  aiImg.src         = aiUrl;
-  aiImg.onload     = () => {
-    const bg = new Image();
-    bg.crossOrigin = "anonymous";
-    bg.src         = STYLE_REF_URL;
-    bg.onload      = () => {
-      resultCanvas.width  = bg.width;
-      resultCanvas.height = bg.height;
-      ctx.drawImage(bg, 0, 0);
-      const x = (bg.width  - 512)/2;
-      const y = (bg.height - 512)/2;
-      ctx.drawImage(aiImg, x, y, 512, 512);
+  aiImg.src = aiUrl;
+  aiImg.onload = () => {
+    // draw full‐size
+    resultCanvas.width  = aiImg.width;
+    resultCanvas.height = aiImg.height;
+    ctx.drawImage(aiImg, 0, 0);
 
-      resultCanvas.style.display = "block";
-      downloadBtn.style.display  = "inline-block";
-      downloadBtn.href           = resultCanvas.toDataURL("image/png");
+    resultCanvas.style.display = "block";
+    downloadBtn.style.display  = "inline-block";
+    downloadBtn.href           = resultCanvas.toDataURL("image/png");
 
-      const thumb = document.createElement("img");
-      thumb.src = resultCanvas.toDataURL("image/png");
-      gallery.prepend(thumb);
-    };
+    const thumb = document.createElement("img");
+    thumb.src = resultCanvas.toDataURL("image/png");
+    gallery.prepend(thumb);
   };
 });
 

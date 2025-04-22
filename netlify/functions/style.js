@@ -37,7 +37,7 @@ export const handler = async (event) => {
 
   try {
     // 4) Call the Edits API using the official SDK
-    const response = await openai.images.edit({
+    const response = await openai.images.edits.create({
       model:           "dall-e-3",        // or "dall-e-2"
       image:           imageBuffer,
       mask:            maskBuffer,

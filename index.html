@@ -1,28 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>Image Styler</title>
-  <link href="./style.css" rel="stylesheet"/>
+  <meta charset="UTF-8">
+  <title>Instant Style Transfer</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Your Styled Portrait</h1>
-  <input type="file" id="fileInput" accept="image/*"/>
+  <h1>Style‑Transfer Demo</h1>
+  <input type="file" id="fileInput" accept="image/*">
 
-  <!-- live preview while we wait -->
-  <img id="previewImg" style="display:none; margin-top:1rem; 
-       max-width:300px; border:2px dashed #00ffff;"/>
+  <!-- user preview -->
+  <img id="previewImg" style="display:none; margin-top:1rem; max-width:300px; border:2px dashed #00ffff;">
 
   <!-- AI result -->
   <canvas id="resultCanvas" style="display:none; margin-top:1rem;"></canvas>
-  <br/>
-  <a id="downloadBtn" style="display:none; margin-top:1rem;" download="styled.png">
-    Download & Share on Instagram
+  <br>
+  <a id="downloadBtn" style="display:none;" download="styled.png">
+    Download & Share
   </a>
 
-  <h2 style="margin-top:2rem;">Gallery</h2>
+  <!-- gallery -->
+  <h2>Gallery</h2>
   <div id="gallery"></div>
 
-  <script src="./app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>

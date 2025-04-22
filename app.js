@@ -1,5 +1,5 @@
 // ———— CONFIG ————
-const OPENAI_KEY = "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";  
+const OPENAI_KEY = "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";  
 const STYLE_BG_URL = 
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 

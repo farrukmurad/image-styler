@@ -8,14 +8,14 @@ const STYLE_REF_URL =
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
 
-// DOM refs
+// DOM elements
 const fileInput    = document.getElementById("fileInput");
 const resultCanvas = document.getElementById("resultCanvas");
 const downloadBtn  = document.getElementById("downloadBtn");
 const gallery      = document.getElementById("gallery");
 const ctx          = resultCanvas.getContext("2d");
 
-// ——— Helper: load & resize to PNG blob ———
+// ——— Helper (resizes & converts to PNG blob) ———
 async function fileToPngBlob(file) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -24,8 +24,7 @@ async function fileToPngBlob(file) {
       const cvs = document.createElement("canvas");
       cvs.width  = 512;
       cvs.height = 512;
-      const c = cvs.getContext("2d");
-      c.drawImage(img, 0, 0, 512, 512);
+      cvs.getContext("2d").drawImage(img, 0, 0, 512, 512);
       cvs.toBlob(blob => resolve(blob), "image/png");
     };
     img.onerror = () => reject("Image load failed");
@@ -37,7 +36,7 @@ fileInput.addEventListener("change", async () => {
   const file = fileInput.files[0];
   if (!file) return alert("Please select a photo");
 
-  // 1) Convert the file to a 512×512 PNG blob
+  // 1) Convert to 512×512 PNG
   let pngBlob;
   try {
     pngBlob = await fileToPngBlob(file);
@@ -45,23 +44,22 @@ fileInput.addEventListener("change", async () => {
     return alert("Conversion failed: " + e);
   }
 
-  // (Optional) Show a quick preview of what we're sending
+  // (Optional) preview what you're sending:
   const preview = document.getElementById("previewImg");
   if (preview) {
     preview.src = URL.createObjectURL(pngBlob);
     preview.style.display = "block";
   }
 
-  // 2) Build a fully‐transparent 512×512 mask
+  // 2) Build a fully‑transparent mask
   const maskBlob = await new Promise(res => {
     const empty = document.createElement("canvas");
     empty.width  = 512;
     empty.height = 512;
-    // leave it blank → fully transparent
-    empty.toBlob(res, "image/png");
+    empty.toBlob(res, "image/png");  // transparent by default
   });
 
-  // 3) Build the multipart form for OpenAI
+  // 3) Prepare multipart form
   const form = new FormData();
   form.append("image", pngBlob, "user.png");
   form.append("mask",  maskBlob, "mask.png");
@@ -72,7 +70,7 @@ fileInput.addEventListener("change", async () => {
   form.append("n",    "1");
   form.append("size", "512x512");
 
-  // 4) Call the edits endpoint
+  // 4) Call the API
   let resp, json;
   try {
     resp = await fetch("https://api.openai.com/v1/images/edits", {
@@ -84,14 +82,17 @@ fileInput.addEventListener("change", async () => {
     if (!resp.ok) throw json;
   } catch (err) {
     console.error("OpenAI error:", err);
-    const msg = err.error?.message || JSON.stringify(err);
+    // Display whichever message is present:
+    const msg = err.error?.message       // nested error object?
+               ?? err.message           // top‐level message?
+               ?? JSON.stringify(err);  // fall back to full JSON
     return alert("Styling failed:\n" + msg);
   }
 
-  // 5) Hide preview if you showed it
+  // 5) Hide preview
   if (preview) preview.style.display = "none";
 
-  // 6) Composite the AI result over your background
+  // 6) Composite over your background
   const aiUrl = json.data[0].url;
   const aiImg = new Image();
   aiImg.crossOrigin = "anonymous";
@@ -101,25 +102,27 @@ fileInput.addEventListener("change", async () => {
     bg.crossOrigin = "anonymous";
     bg.src = STYLE_REF_URL;
     bg.onload = () => {
-      // a) Resize canvas to background
+      // a) fit canvas to background
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
-      // b) Center the AI image
+
+      // b) center the AI image
       const x = (bg.width  - 512) / 2;
       const y = (bg.height - 512) / 2;
       ctx.drawImage(aiImg, x, y, 512, 512);
 
-      // c) Show download link
+      // c) show download link
       resultCanvas.style.display = "block";
       downloadBtn.style.display  = "inline-block";
       downloadBtn.href           = resultCanvas.toDataURL("image/png");
 
-      // d) Add thumbnail to gallery
+      // d) add to gallery
       const thumb = document.createElement("img");
       thumb.src = resultCanvas.toDataURL("image/png");
       gallery.prepend(thumb);
     };
   };
 });
+
 

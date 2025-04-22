@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <title>Blue‑Bust Studio</title>
-  <!-- Cropper.js lets people drag‑to‑crop their photo -->
+  <title>Readymag Cyan‑Bust Generator</title>
+  <!-- Cropper.js for drag‑to‑crop UI -->
   <link href="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet"/>
   <link href="./style.css" rel="stylesheet"/>
 </head>
@@ -13,24 +13,24 @@
   <!-- 1) Upload button -->
   <input type="file" id="fileInput" accept="image/*"/>
 
-  <!-- 2) Cropper area: hidden until you upload -->
+  <!-- 2) Cropper area (hidden until upload) -->
   <div id="cropContainer">
-    <img id="toCrop" style="max-width:100%; display:none" />
+    <img id="toCrop" style="max-width:100%; display:none"/>
     <button id="cropBtn" style="display:none">Crop & Style</button>
   </div>
 
-  <!-- 3) Where result appears -->
+  <!-- 3) Final result + download -->
   <canvas id="resultCanvas" style="display:none;"></canvas>
   <br/>
   <a id="downloadBtn" style="display:none" download="bust.png">
     Download & Share on Instagram
   </a>
 
-  <!-- 4) Gallery of all user creations -->
+  <!-- 4) Live gallery -->
   <h2>Gallery</h2>
   <div id="gallery"></div>
 
-  <!-- 5) Load Cropper.js and our code -->
+  <!-- 5) Load Cropper.js and our script -->
   <script src="https://unpkg.com/cropperjs@1.5.13/dist/cropper.min.js"></script>
   <script src="./app.js"></script>
 </body>

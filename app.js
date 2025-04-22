@@ -7,6 +7,7 @@ const PROXY_URL = "https://image-styler-proxy.murodovfarrukh.workers.dev/";
 const STYLE_REF_URL =
   "https://farrukmurad.github.io/image-styler/style-ref.png";
 
+
 // DOM refs
 const fileInput    = document.getElementById("fileInput");
 const resultCanvas = document.getElementById("resultCanvas");
@@ -63,14 +64,13 @@ fileInput.addEventListener("change", async () => {
     if (!resp.ok) throw data;
   } catch (err) {
     console.error("Proxy error:", err);
-    // Show the entire error object as JSON,
-    // or at least the `error` property if present.
     const msg = err.error
       ? (typeof err.error === "string"
          ? err.error
          : JSON.stringify(err.error, null, 2))
       : JSON.stringify(err, null, 2);
     return alert("Styling failed:\n" + msg);
+  }  // ← **This closes the catch block**!
 
   // 2) Composite over your background
   const aiUrl = data.url;
@@ -85,6 +85,7 @@ fileInput.addEventListener("change", async () => {
       resultCanvas.width  = bg.width;
       resultCanvas.height = bg.height;
       ctx.drawImage(bg, 0, 0);
+
       const x = (bg.width - 512) / 2;
       const y = (bg.height - 512) / 2;
       ctx.drawImage(aiImg, x, y, 512, 512);

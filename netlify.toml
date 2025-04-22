@@ -1,8 +1,7 @@
 [build]
-  publish   = "."            # serve from the repo root
-  functions = "functions"    # look here for lambdas
+  publish   = "."
+  functions = "functions"
 
-# (optional) client‑side SPA redirect
 [[redirects]]
   from   = "/*"
   to     = "/index.html"

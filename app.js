@@ -35,19 +35,36 @@ fileInput.addEventListener("change", () => {
 cropBtn.addEventListener("click", async () => {
   // a) Get the cropped face+bust as 512×512 PNG
   const canvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
-  canvas.toBlob(async blob => {
-    // b) Prepare our form data
-    const form = new FormData();
-    form.append("image", blob, "face.png");
-    // Blank mask = style whole crop
-    const maskData = new Uint8Array(canvas.width * canvas.height).fill(255);
-    const maskBlob = new Blob([maskData], { type: "application/octet-stream" });
-    form.append("mask", maskBlob, "mask.png");
-    form.append("model", "dall-e-3");
-    // Prompt with your background style image URL
-    form.append("prompt",
-      `Please restyle this photo to match exactly the look of this background image: ${STYLE_BG_URL}`
-    );
+canvas.toBlob(async blob => {
+  // 1) Start your FormData and add the cropped image
+  const form = new FormData();
+  form.append("image", blob, "face.png");
+
+  // 2) Create a real PNG mask via a hidden canvas
+  const maskCanvas = document.createElement("canvas");
+  maskCanvas.width  = canvas.width;
+  maskCanvas.height = canvas.height;
+  const mctx = maskCanvas.getContext("2d");
+  mctx.fillStyle = "white";                  // white = areas to edit
+  mctx.fillRect(0, 0, maskCanvas.width, maskCanvas.height);
+  const maskBlob = await new Promise(res =>
+    maskCanvas.toBlob(res, "image/png")      // convert to PNG blob
+  );
+  form.append("mask", maskBlob, "mask.png"); // attach as “mask.png”
+
+  // 3) Now append the rest and call OpenAI as before
+  form.append("model", "dall-e-3");
+  form.append("prompt",
+    `Please restyle this photo to match exactly the look of this background image: ${STYLE_BG_URL}`
+  );
+
+  const resp = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${OPENAI_KEY}` },
+    body: form
+  });
+  // … handle resp.json() and draw the result …
+});
 
     // c) Call OpenAI images.edit endpoint
     const resp = await fetch("https://api.openai.com/v1/images/edits", {
